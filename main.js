@@ -244,7 +244,6 @@ function draw(canvas, Universe){
    
     // Transform objects to coordinate system centered on camera.
     var camera = Universe.camera;
-    var objects = []
     let ctx = canvas.getContext('2d');
 
     for(var i = 0; i < Universe.objects.length; i ++){
@@ -291,41 +290,31 @@ function draw(canvas, Universe){
     }
 }
 
-let lastStamp = 0;
-function update(stamp, camera){
-    let dt = stamp - lastStamp;
-
+function update(camera){
+    let dt = 25;
     //updates state variables
     //Translations
-    if(state.w){
+    if(keyState["KeyW"]){
         //forward
         camera.pos = camera.pos.add(camera.forward.mul((dt/1000) * speed));
     }
-    if(state.a){
+    if(keyState["KeyA"]){
         //left
         camera.pos = camera.pos.add(camera.right.mul(-(dt/1000)* speed));
     }
-    if(state.s){
+    if(keyState["KeyS"]){
         //backward
         camera.pos = camera.pos.add(camera.forward.mul(-(dt/1000)* speed));
     }
-    if(state.d){
+    if(keyState["KeyD"]){
         //right
         camera.pos = camera.pos.add(camera.right.mul((dt/1000) * speed));
     }
-    if(state[' ']){
-        //up
-        camera.pos = camera.pos.add(camera.up.mul((dt/1000) * speed));
-    }
-    if(state.Shift){
-        //down
-        camera.pos = camera.pos.add(camera.up.mul(-(dt/1000) * speed));
-    }
-    if(state.e){
+    if(keyState["KeyE"]){
         //zorward
         camera.pos = camera.pos.add(camera.w.mul((dt/1000) * speed));
     }
-    if(state.z){
+    if(keyState["KeyZ"]){
         //backzard
         camera.pos = camera.pos.add(camera.w.mul((dt/1000) * speed));
     }
@@ -335,8 +324,6 @@ function update(stamp, camera){
     /*discussion
         This is a tricky topic ... 
     */
-    //reset state
-    resetState()
 }
 
 //initialize canvas
@@ -349,26 +336,11 @@ if(!ctx){throw 'Shame on you! Initialize the context!'}
 ctx.setTransform(1,0,0,-1,canvas.width/2, canvas.height/2);
 
 //Add event listeners and link to program state
-function resetState(){
-    for(const e in state){
-        state[e] = false;
-    }
-}
-var state = {
-    'w':false,
-    'a':false,
-    's':false,
-    'd':false,
-    'mousedown':false,
-    ' ':false,
-    'Shift':false,
-    'e':false,
-    'z':false
-}
-window.addEventListener('mousedown', (ev) => state.mousedown = true);
-window.addEventListener('mouseup', (ev) => state.mousedown = false);
-window.addEventListener('keydown', (ev) => state[ev.key] = true);
-window.addEventListener('keyup', (ev) => state[ev.key] = false);
+var keyState = {}
+window.addEventListener('mousedown', (ev) => keyState.mousedown = true);
+window.addEventListener('mouseup', (ev) => keyState.mousedown = false);
+window.addEventListener('keydown', (ev) => keyState[ev.code] = true);
+window.addEventListener('keyup', (ev) => setTimeout(()=> keyState[ev.code] = false, 5));
 var body = document.querySelector('body');
 window.addEventListener('resize', (ev) => {
     if(!canvas || !body){throw 'canvas/body not defined'};
@@ -377,7 +349,7 @@ window.addEventListener('resize', (ev) => {
     ctx.setTransform(1,0,0,-1,canvas.width/2, canvas.height/2);
 });
 //set universe constants
-let speed = 1; // speed of translation on key input
+let speed = 200; // speed of translation on key input
 let rot_speed = 1; //speed of rotation on mouse movement.
 
 //initialize universe
@@ -385,10 +357,8 @@ var u = new Universe();
 u.addCube(new Vector4(-50, -50, 50, 0));
 
 
+var callUpdate = setInterval(update, 25, u.camera);
 function render(t){
-    //real-time update
-    update(t, u.camera);
-    
     //clear
     ctx.clearRect(-width/2, -height/2, width, height);
 
