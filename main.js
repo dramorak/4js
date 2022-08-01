@@ -27,6 +27,15 @@
 */
 
 // @ts-check
+function bits(n){
+    //counts the bits in n
+    let s = 0;
+    while(n > 0){
+        s += n & 1;
+        n = n>>1;
+    }
+    return s
+}
 class Vector4{
     //4 dimensional vector
     constructor(x,y,z,w) {
@@ -178,47 +187,43 @@ class Universe{
         this.camera = new Camera(pos, facing, up, right, w, d);
     }
 
-    addCube(offset = new Vector4(0,0,0,0)){
+    addCube(offset = new Vector4(0,0,0,0), outline=false){
         //Adds 4d cube to universe, translated by offset.
         var x = offset.x;
         var y = offset.y;
         var z = offset.z;
         var w = offset.w;
-
-        var c1  = new Vector4(0,0,0,0);
-        var c2  = new Vector4(100,0,0,0);
-        var c3  = new Vector4(100,100,0,0);
-        var c4  = new Vector4(0,100,0,0);
-        var c5  = new Vector4(0,0,100,0);
-        var c6  = new Vector4(100,0,100,0);
-        var c7  = new Vector4(100,100,100,0);
-        var c8  = new Vector4(0,100,100,0);
-        var c9  = new Vector4(0,0,0,100);
-        var c10 = new Vector4(100,0,0,100);
-        var c11 = new Vector4(100,100,0,100);
-        var c12 = new Vector4(0,100,0,100);
-        var c13 = new Vector4(0,0,100,100);
-        var c14 = new Vector4(100,0,100,100);
-        var c15 = new Vector4(100,100,100,100);
-        var c16 = new Vector4(0,100,100,100);
-
-        this.addPoint(c1.x + x, c1.y + y, c1.z + z, c1.w + w);
-        this.addPoint(c2.x + x, c2.y + y, c2.z + z, c2.w + w);
-        this.addPoint(c3.x + x, c3.y + y, c3.z + z, c3.w + w);
-        this.addPoint(c4.x + x, c4.y + y, c4.z + z, c4.w + w);
-        this.addPoint(c5.x + x, c5.y + y, c5.z + z, c5.w + w);
-        this.addPoint(c6.x + x, c6.y + y, c6.z + z, c6.w + w);
-        this.addPoint(c7.x + x, c7.y + y, c7.z + z, c7.w + w);
-        this.addPoint(c8.x + x, c8.y + y, c8.z + z, c8.w + w);
-        this.addPoint(c9.x + x, c9.y + y, c9.z + z, c9.w + w);
-        this.addPoint(c10.x + x, c10.y + y, c10.z + z, c10.w + w);
-        this.addPoint(c11.x + x, c11.y + y, c11.z + z, c11.w + w);
-        this.addPoint(c12.x + x, c12.y + y, c12.z + z, c12.w + w);
-        this.addPoint(c13.x + x, c13.y + y, c13.z + z, c13.w + w);
-        this.addPoint(c14.x + x, c14.y + y, c14.z + z, c14.w + w);
-        this.addPoint(c15.x + x, c15.y + y, c15.z + z, c15.w + w);
-        this.addPoint(c16.x + x, c16.y + y, c16.z + z, c16.w + w);
-
+        var c1  = new Vector4(x,y,z,w);
+        var c2  = new Vector4(100 + x,y,z,w);
+        var c3  = new Vector4(x, 100 + y,0 + z,0 + w);
+        var c4  = new Vector4(100 + x,100 + y,0 + z,0 + w);
+        var c5  = new Vector4(0 + x,0 + y,100 + z,0 + w);
+        var c6  = new Vector4(100 + x,0 + y,100 + z,0 + w);
+        var c7  = new Vector4(x,100 + y,100 + z,0 + w);
+        var c8  = new Vector4(100 + x,100 + y,100 + z,0 + w);
+        var c9  = new Vector4(0 + x,0 + y,0 + z,100 + w);
+        var c10 = new Vector4(100 + x,0 + y,0 + z,100 + w);
+        var c11 = new Vector4(x,100 + y,0 + z,100 + w);
+        var c12 = new Vector4(100 + x,100 + y,0 + z,100 + w);
+        var c13 = new Vector4(0 + x,0 + y,100 + z,100 + w);
+        var c14 = new Vector4(100 + x,0 + y,100 + z,100 + w);
+        var c15 = new Vector4(x,100 + y,100 + z,100 + w);
+        var c16 = new Vector4(100 + x,100 + y,100 + z,100 + w);
+        var vectors = [c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16];
+        if(!outline){
+            for(let i = 0; i < vectors.length; i++){
+                let v = vectors[i]
+                this.addPoint(v.x, v.y, v.z, v.w);
+            }
+        } else {
+            for (let i = 0; i < 16; i ++ ){
+                for(let j = i + 1; j < 16; j++){
+                    if (bits(j ^ i) == 1){
+                        this.addObject(new Line(vectors[i], vectors[j]))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -267,18 +272,17 @@ function draw(canvas, Universe){
         }else if(obj.constructor.name === "Line"){
             let e1 = transform(obj.endpoint1, camera.right, camera.up, camera.forward, camera.w, camera.pos);
             let e2 = transform(obj.endpoint2, camera.right, camera.up, camera.forward, camera.w, camera.pos);
-            
             // how do I handle lines?
             // if both points are behind the screen, don't draw
             // if both points are in front of the screen, draw
             // if one point is in front of the screen and one point behind...
             //  -let's get to that later
-            if ((e1.z > camera.d) && (e2.z > camera.d)){
+            if ((e1.z > 0) && (e2.z > 0)){
                 let t1 = camera.d / e1.z;
                 let t2 = camera.d / e2.z;
 
                 let v1 = e1.mul(t1);
-                let v2 = e1.mul(t2);
+                let v2 = e2.mul(t2);
 
                 ctx.fillStyle = obj.color;
                 ctx.beginPath();
@@ -354,7 +358,7 @@ let rot_speed = 1; //speed of rotation on mouse movement.
 
 //initialize universe
 var u = new Universe();
-u.addCube(new Vector4(-50, -50, 50, 0));
+u.addCube(new Vector4(0,0,0, 0), true);
 
 
 var callUpdate = setInterval(update, 25, u.camera);
@@ -370,6 +374,4 @@ function render(t){
 }
 
 window.addEventListener('load', render);
-
-
 
