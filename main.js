@@ -8,7 +8,7 @@
     Universe:
         : Camera
             :position
-            :angling
+            :angling        
             :?field of view
         : Objects
             : Points
@@ -22,13 +22,14 @@
               camera sees it on the canvas.
 
     TODO
-        Objects
-            instead of lines/points, have a general 'Object' class which supports transformations and drawing
+        Implement Transformations
+        Implement Rotations
+        Implement mouse catch
 */
 
 // @ts-check
 function bits(n){
-    //counts the bits in n
+    //counts the bits in n, should be quick-ish if n < 2 ** (10 ** 6)
     let s = 0;
     while(n > 0){
         s += n & 1;
@@ -73,6 +74,80 @@ class Vector4{
         //Args:
         //  v: a vector4
         return this.x * v.x + this.y * v.y + this.z * v.z + this.w * v.w;
+    }
+
+    equals(v){
+        return this.x == v.x && this.y == v.y && this.z == v.z && this.w == v.w;
+    }
+    
+    str(){
+        return `<${this.x},${this.y},${this.z},${this.w}>`
+    }
+}
+
+class Matrix{
+    //Container class for matrices
+    //  -Linear transformations are easily codified as matrices, and matrices are conveniently expressed as data structures.
+    constructor(x1=0, y1=0, z1=0, w1=0, o1=0, x2=0, y2=0, z2=0, w2=0, o2=0, x3=0, y3=0, z3=0, w3=0, o3=0, x4=0, y4=0, z4=0, w4=0, o4=0){
+        this.x1 = x1;
+        this.y1 = y1;
+        this.z1 = z1;
+        this.w1 = w1;
+        this.o1 = o1;
+        this.x2 = x2;
+        this.y2 = y2;
+        this.z2 = z2;
+        this.w2 = w2;
+        this.o2 = o2;
+        this.x3 = x3;
+        this.y3 = y3;
+        this.z3 = z3;
+        this.w3 = w3;
+        this.o3 = o3;
+        this.x4 = x4;
+        this.y4 = y4;
+        this.z4 = z4;
+        this.w4 = w4;
+        this.o4 = o4;
+    }
+
+    apply(v){
+        return new Vector4(
+            this.x1 * v.x + this.y1 * v.y + this.z1 * v.z + this.w1 * v.w + this.o1,
+            this.x2 * v.x + this.y2 * v.y + this.z2 * v.z + this.w2 * v.w + this.o2,
+            this.x3 * v.x + this.y3 * v.y + this.z3 * v.z + this.w3 * v.w + this.o3,
+            this.x4 * v.x + this.y4 * v.y + this.z4 * v.z + this.w4 * v.w + this.o4);
+    }
+
+    matApply(mat){
+
+    }
+}
+
+function rotationMatrix(plane, theta){
+    //Produces rotation matrix corresponding to a rotation about the given plane by angle theta. 
+    //Args:
+    //  plane: string corresponding to the plane of rotation (ex, w-x, w-z, z-y)
+    //  theta: angle of rotation
+    c = Math.cos(theta);
+    s = Math.sin(theta);
+    if (plane == "w-x" || plane == "x-w"){
+        return new Matrix(c,0,0,-s,0,0,1,0,0,0,0,0,1,0,0,s,0,0,c,0);
+    }
+    if (plane == "w-y"|| plane == "y-w"){
+        return new Matrix(1,0,0,0,0,0,c,0,-s,0,0,0,1,0,0,0,0,0,1,0);
+    }
+    if (plane == "w-z"|| plane == "z-w"){
+        return new Matrix(1,0,0,0,0,0,1,0,0,0,0,0,c,-s,0,0,0,s,c,0);
+    }
+    if (plane == "y-x"|| plane == "x-y"){
+        return new Matrix(c, -s, 0, 0, 0, s, c, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0);
+    }
+    if (plane == "z-x"|| plane == "x-z"){
+        return new Matrix(c,0,-s,0,0,0,1,0,0,0,s,0,c,0,0,0,0,0,1,0);
+    }
+    if (plane == "z-y"|| plane == "y-z"){
+        return new Matrix(1,0,0,0,0,0,c,-s,0,0,0,s,c,0,0,0,0,0,1,0);
     }
 }
 
@@ -139,12 +214,17 @@ class Camera{
         this.forward = this.forward.mul(1/this.forward.length);
     }
 
-    rotate(){
+    set_rotate(theta){
         /*
             discussion on rotations in 4d, and in this simulator
             
             Ideally I'd like the mouse to be used to rotate
+
+            .. For now, I'll just introduce a simple algorithm.
         */
+        //Rotate about the z,w plane
+        this.right = new Vector4(0, Math.cos(theta), 0, -Math.sin(theta));
+        this.w       = new Vector4(0,Math.sin(theta), 0, Math.cos(theta));
     }
 }
 
@@ -187,28 +267,32 @@ class Universe{
         this.camera = new Camera(pos, facing, up, right, w, d);
     }
 
-    addCube(offset = new Vector4(0,0,0,0), outline=false){
+    addCube(r=100, offset = new Vector4(0,0,0,0), outline=false){
         //Adds 4d cube to universe, translated by offset.
+        //Args:
+        //  r: radius of cube
+        //  offset: translation
+        //  outline: boolean, fill edges with lines
         var x = offset.x;
         var y = offset.y;
         var z = offset.z;
         var w = offset.w;
         var c1  = new Vector4(x,y,z,w);
-        var c2  = new Vector4(100 + x,y,z,w);
-        var c3  = new Vector4(x, 100 + y,0 + z,0 + w);
-        var c4  = new Vector4(100 + x,100 + y,0 + z,0 + w);
-        var c5  = new Vector4(0 + x,0 + y,100 + z,0 + w);
-        var c6  = new Vector4(100 + x,0 + y,100 + z,0 + w);
-        var c7  = new Vector4(x,100 + y,100 + z,0 + w);
-        var c8  = new Vector4(100 + x,100 + y,100 + z,0 + w);
-        var c9  = new Vector4(0 + x,0 + y,0 + z,100 + w);
-        var c10 = new Vector4(100 + x,0 + y,0 + z,100 + w);
-        var c11 = new Vector4(x,100 + y,0 + z,100 + w);
-        var c12 = new Vector4(100 + x,100 + y,0 + z,100 + w);
-        var c13 = new Vector4(0 + x,0 + y,100 + z,100 + w);
-        var c14 = new Vector4(100 + x,0 + y,100 + z,100 + w);
-        var c15 = new Vector4(x,100 + y,100 + z,100 + w);
-        var c16 = new Vector4(100 + x,100 + y,100 + z,100 + w);
+        var c2  = new Vector4(r + x,y,z,w);
+        var c3  = new Vector4(x, r + y,0 + z,0 + w);
+        var c4  = new Vector4(r + x,r + y,0 + z,0 + w);
+        var c5  = new Vector4(0 + x,0 + y,r + z,0 + w);
+        var c6  = new Vector4(r + x,0 + y,r + z,0 + w);
+        var c7  = new Vector4(x,r + y,r + z,0 + w);
+        var c8  = new Vector4(r + x,r + y,r + z,0 + w);
+        var c9  = new Vector4(0 + x,0 + y,0 + z,r + w);
+        var c10 = new Vector4(r + x,0 + y,0 + z,r + w);
+        var c11 = new Vector4(x,r + y,0 + z,r + w);
+        var c12 = new Vector4(r + x,r + y,0 + z,r + w);
+        var c13 = new Vector4(0 + x,0 + y,r + z,r + w);
+        var c14 = new Vector4(r + x,0 + y,r + z,r + w);
+        var c15 = new Vector4(x,r + y,r + z,r + w);
+        var c16 = new Vector4(r + x,r + y,r + z,r + w);
         var vectors = [c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16];
         if(!outline){
             for(let i = 0; i < vectors.length; i++){
@@ -294,8 +378,7 @@ function draw(canvas, Universe){
     }
 }
 
-function update(camera){
-    let dt = 25;
+function update(camera, dt){
     //updates state variables
     //Translations
     if(keyState["KeyW"]){
@@ -324,9 +407,43 @@ function update(camera){
     }
 
     //rotations
+    mouseChange = {x:mouseState.cur.x - mouseState.last.x, y:mouseState.cur.y - mouseState.last.y};
+    mouseState.last = mouseState.cur;
 
-    /*discussion
-        This is a tricky topic ... 
+    if(keyState["Digit1"]){
+        //w-x positive angle
+        camera.w = 
+    }
+    if(keyState["Digit2"]){
+        //w-x negative angle
+    }
+    if(keyState["Digit3"]){
+        //w-y positive angle
+    }
+    if(keyState["Digit4"]){
+        //w-y negative angle
+    }
+    if(keyState["Digit5"]){
+        //w-z positive angle
+    }
+    if(keyState["Digit6"]){
+        //w-z negative angle
+    }
+    /*Discussion:
+        There are 2 separate discussions to be had here.
+        #1: rotations in 3d controlled by the mouse
+        #2: rotations in 4d controlled by some other button.
+
+        I don't know if this is the best way to go, but for now, I'll go like this:
+        mouse controls rotation in the three canonical dimensions
+        1-6 controls rotation in the w-d plane (1,2 for w-x, 3,4 for w-y, 5,6 for w-z)
+
+        How to rotate in 3 dimensions with mouse? 
+        Ideally, moving the mouse changes what you're facing towards; 
+        but what to do about the other plane orthagonal to that axis?
+        How do video games do it ?
+            
+        ... For now I can do the w-rotations
     */
 }
 
@@ -341,6 +458,7 @@ ctx.setTransform(1,0,0,-1,canvas.width/2, canvas.height/2);
 
 //Add event listeners and link to program state
 var keyState = {}
+var mouseState={last:{x:0,y:0}, cur:{x:0,y:0}}
 window.addEventListener('mousedown', (ev) => keyState.mousedown = true);
 window.addEventListener('mouseup', (ev) => keyState.mousedown = false);
 window.addEventListener('keydown', (ev) => keyState[ev.code] = true);
@@ -352,16 +470,27 @@ window.addEventListener('resize', (ev) => {
     height = canvas.height = body.offsetHeight;
     ctx.setTransform(1,0,0,-1,canvas.width/2, canvas.height/2);
 });
+window.addEventListener('mousemove', (ev) => {
+    mouseState.cur = {x:ev.clientX, y:ev.clientY}
+});
 //set universe constants
-let speed = 200; // speed of translation on key input
-let rot_speed = 1; //speed of rotation on mouse movement.
+let dt = 25; // update interval (in milliseconds)
+let speed = 200; // speed of translation on key input (per second)
+let rot_speed = 0.1; //speed of rotation on key input (radians / second)
+
+
+let wxRot = rotationMatrix('w-x', rot_speed / Math.PI * dt / 1000);
+let wyRot = rotationMatrix('w-y', rot_speed / Math.PI * dt / 1000);
+let wzRot = rotationMatrix('w-z', rot_speed / Math.PI * dt / 1000);
+let nwxRot = rotationMatrix('w-x', -rot_speed / Math.PI * dt / 1000);
+let nwyRot = rotationMatrix('w-y', -rot_speed / Math.PI * dt / 1000);
+let nwzRot = rotationMatrix('w-z', -rot_speed / Math.PI * dt / 1000);
 
 //initialize universe
 var u = new Universe();
-u.addCube(new Vector4(0,0,0, 0), true);
+u.addCube(100, new Vector4(-50, -50, 0, -50), true);
 
-
-var callUpdate = setInterval(update, 25, u.camera);
+var callUpdate = setInterval(update, dt, u.camera, dt);
 function render(t){
     //clear
     ctx.clearRect(-width/2, -height/2, width, height);
@@ -375,3 +504,44 @@ function render(t){
 
 window.addEventListener('load', render);
 
+//test definitions
+function test(){
+    function assert(bool, test = '', msg=''){
+        if(!bool){
+            throw `Assertion Error: failed test <${test}> : [${msg}]`
+        }
+    }
+    console.log('Testing ...');
+    let vec1=new Vector4(0,0,0,0);
+    let vec2=new Vector4(1,0,0,0);
+    let vec3=new Vector4(0,1,0,0);
+    let vec4=new Vector4(0,0,1,0);
+    let vec5=new Vector4(0,0,0,1);
+    let vec6=new Vector4(1,1,0,0);
+    var vectors = [vec1, vec2, vec3, vec4, vec5, vec6];
+
+    let id = new Matrix(1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0);
+    let scale = new Matrix(3,0,0,0,0,0,3,0,0,0,0,0,3,0,0,0,0,0,3,0);
+    let c = Math.cos(Math.PI/6);
+    let s = Math.sin(Math.PI/6);
+    let rot = new Matrix(c,-s,0,0,0,s,c,0,0,0,0,0,1,0,0,0,0,0,1,0);
+    let rot2= rotationMatrix('x-y', Math.PI/6);
+    let rot3= rotationMatrix('y-x', Math.PI/6);
+    let rep = new Matrix(0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+    let trans = new Matrix(1,0,0,0,1,0,1,0,0,1,0,0,1,0,1,0,0,0,1,1);
+    console.log('Testing matrices...');
+    for (let i = 0; i < vectors.length; i++){
+        let v = vectors[i];
+        assert(v.equals(id.apply(v)), "id", v.str());
+        assert(v.mul(3).equals(scale.apply(v)), "scale", v.str());
+        let vr = new Vector4(v.x * c - v.y*s, v.x * s + v.y * c, v.z, v.w);
+        assert(vr.equals(rot.apply(v)), "rot", v.str());
+        assert(vr.equals(rot2.apply(v)), "rot2", v.str());
+        assert(vr.equals(rot3.apply(v)), "rot3", v.str());
+        let ones = new Vector4(1,1,1,1);
+        assert(ones.equals(rep.apply(v)), "replace", v.str());
+        let shift = new Vector4(v.x+1, v.y+1, v.z+1, v.w + 1);
+        assert(shift.equals(trans.apply(v)), "translate", v.str());
+    }
+    console.log('Testing completed: No errors found.')
+}
