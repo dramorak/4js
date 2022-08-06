@@ -22,9 +22,7 @@
               camera sees it on the canvas.
 
     TODO
-        Implement Transformations
         Implement Rotations
-        Implement mouse catch
 */
 
 // @ts-check
@@ -405,6 +403,12 @@ function update(camera, dt){
         //backzard
         camera.pos = camera.pos.add(camera.w.mul((dt/1000) * speed));
     }
+    if(keyState["Space"]){
+        camera.pos = camera.pos.add(camera.up.mul((dt/1000) * speed));
+    }
+    if(keyState["ControlLeft"]){
+        camera.pos = camera.pos.add(camera.up.mul(-(dt/1000) * speed));
+    }
 
     //rotations
     mouseChange = {x:mouseState.cur.x - mouseState.last.x, y:mouseState.cur.y - mouseState.last.y};
@@ -412,7 +416,6 @@ function update(camera, dt){
 
     if(keyState["Digit1"]){
         //w-x positive angle
-        camera.w = 
     }
     if(keyState["Digit2"]){
         //w-x negative angle
