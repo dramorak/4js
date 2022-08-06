@@ -212,17 +212,28 @@ class Camera{
         this.forward = this.forward.mul(1/this.forward.length);
     }
 
-    set_rotate(theta){
-        /*
-            discussion on rotations in 4d, and in this simulator
-            
-            Ideally I'd like the mouse to be used to rotate
-
-            .. For now, I'll just introduce a simple algorithm.
-        */
-        //Rotate about the z,w plane
-        this.right = new Vector4(0, Math.cos(theta), 0, -Math.sin(theta));
-        this.w       = new Vector4(0,Math.sin(theta), 0, Math.cos(theta));
+    rotate(plane, theta){
+        
+        let c = Math.cos(theta);
+        let s = Math.sin(theta);
+        let t = new Vector4(this.w.x, this.w.y, this.w.z, this.w.w);
+        if (plane == "xw"){
+            this.w = this.right.mul(s).add(t.mul(c));
+            this.right = this.right.mul(c).add(t.mul(-s));
+        }
+        if (plane == "yw"){
+            this.w = this.up.mul(s).add(t.mul(c));
+            this.up = this.up.mul(c).add(t.mul(-s));
+        }
+        if (plane == "zw"){
+            this.w = this.forward.mul(s).add(t.mul(c));
+            this.forward = this.forward.mul(c).add(t.mul(-s));
+        }
+        if (plane == "xy"){
+            let t = new Vector4(this.right.x, this.right.y, this.right.z, this.right.w);
+            this.right = this.right.mul(c).add(this.up.mul(-s));
+            this.up    = t.mul(s).add(this.up.mul(c));
+        }
     }
 }
 
@@ -406,7 +417,7 @@ function update(camera, dt){
     if(keyState["Space"]){
         camera.pos = camera.pos.add(camera.up.mul((dt/1000) * speed));
     }
-    if(keyState["ControlLeft"]){
+    if(keyState["ShiftLeft"]){
         camera.pos = camera.pos.add(camera.up.mul(-(dt/1000) * speed));
     }
 
@@ -416,21 +427,30 @@ function update(camera, dt){
 
     if(keyState["Digit1"]){
         //w-x positive angle
+        camera.rotate("xw", dt / 1000 * rot_speed);
     }
     if(keyState["Digit2"]){
         //w-x negative angle
+        camera.rotate("xw", -dt / 1000 * rot_speed);
     }
     if(keyState["Digit3"]){
         //w-y positive angle
+        camera.rotate("yw", dt / 1000 * rot_speed);
     }
     if(keyState["Digit4"]){
         //w-y negative angle
+        camera.rotate("yw", -dt / 1000 * rot_speed);
     }
     if(keyState["Digit5"]){
         //w-z positive angle
+        camera.rotate("zw", dt / 1000 * rot_speed);
     }
     if(keyState["Digit6"]){
         //w-z negative angle
+        camera.rotate("zw", -dt / 1000 * rot_speed);
+    }
+    if(keyState["Digit7"]){
+        camera.rotate("xy", dt/1000 * rot_speed);
     }
     /*Discussion:
         There are 2 separate discussions to be had here.
@@ -479,7 +499,7 @@ window.addEventListener('mousemove', (ev) => {
 //set universe constants
 let dt = 25; // update interval (in milliseconds)
 let speed = 200; // speed of translation on key input (per second)
-let rot_speed = 0.1; //speed of rotation on key input (radians / second)
+let rot_speed = 2 * Math.PI; //speed of rotation on key input (radians / second)
 
 
 let wxRot = rotationMatrix('w-x', rot_speed / Math.PI * dt / 1000);
