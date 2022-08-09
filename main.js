@@ -127,8 +127,8 @@ function rotationMatrix(plane, theta){
     //Args:
     //  plane: string corresponding to the plane of rotation (ex, w-x, w-z, z-y)
     //  theta: angle of rotation
-    c = Math.cos(theta);
-    s = Math.sin(theta);
+    let c = Math.cos(theta);
+    let s = Math.sin(theta);
     if (plane == "w-x" || plane == "x-w"){
         return new Matrix(c,0,0,-s,0,0,1,0,0,0,0,0,1,0,0,s,0,0,c,0);
     }
@@ -233,6 +233,16 @@ class Camera{
             let t = new Vector4(this.right.x, this.right.y, this.right.z, this.right.w);
             this.right = this.right.mul(c).add(this.up.mul(-s));
             this.up    = t.mul(s).add(this.up.mul(c));
+        }
+        if (plane == 'xz'){
+            let t = new Vector4(this.right.x, this.right.y, this.right.z, this.right.w);
+            this.right = this.right.mul(c).add(this.forward.mul(-s));
+            this.forward    = t.mul(s).add(this.forward.mul(c));
+        }
+        if (plane == 'yz'){
+            let t = new Vector4(this.up.x, this.up.y, this.up.z, this.up.w);
+            this.up = this.up.mul(c).add(this.forward.mul(-s));
+            this.forward = t.mul(s).add(this.forward.mul(c));
         }
     }
 }
@@ -422,9 +432,14 @@ function update(camera, dt){
     }
 
     //rotations
-    mouseChange = {x:mouseState.cur.x - mouseState.last.x, y:mouseState.cur.y - mouseState.last.y};
-    mouseState.last = mouseState.cur;
-
+    //mouse rotation
+    //x-z
+    camera.rotate("xz", mouseState.x/rotation_sphere_radius);
+    //y-z
+    camera.rotate("yz", -mouseState.y/rotation_sphere_radius);
+    mouseState.y = mouseState.x = 0;
+    
+    //keyboard rotation
     if(keyState["Digit1"]){
         //w-x positive angle
         camera.rotate("xw", dt / 1000 * rot_speed);
@@ -468,6 +483,7 @@ function update(camera, dt){
             
         ... For now I can do the w-rotations
     */
+
 }
 
 //initialize canvas
@@ -478,10 +494,33 @@ var height = canvas.height = document.querySelector('body').offsetHeight;
 var ctx = canvas.getContext('2d');
 if(!ctx){throw 'Shame on you! Initialize the context!'}
 ctx.setTransform(1,0,0,-1,canvas.width/2, canvas.height/2);
+canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
 
 //Add event listeners and link to program state
 var keyState = {}
-var mouseState={last:{x:0,y:0}, cur:{x:0,y:0}}
+var mouseState={x:0, y:0}
+canvas.addEventListener('click', ()=>{
+    canvas.requestPointerLock();
+})
+function lockChangeAlert() {
+    if (document.pointerLockElement === canvas || 
+        document.mozPointerLockElement === canvas){
+        console.log('Locking pointer.');
+        document.addEventListener('mousemove', updateMouse, false);
+    } else {
+        console.log('Unlocking pointer.');
+        document.removeEventListener('mousemove', updateMouse, false);
+    }
+}
+function updateMouse(e){
+    //updates internal mouseState in response to mouse-movement event
+    mouseState.x += e.movementX;
+    mouseState.y += e.movementY;
+}
+document.addEventListener('pointerlockchange', lockChangeAlert, false);
+document.addEventListener('mozpointerlockchange', lockChangeAlert, false);
+
 window.addEventListener('mousedown', (ev) => keyState.mousedown = true);
 window.addEventListener('mouseup', (ev) => keyState.mousedown = false);
 window.addEventListener('keydown', (ev) => keyState[ev.code] = true);
@@ -493,14 +532,12 @@ window.addEventListener('resize', (ev) => {
     height = canvas.height = body.offsetHeight;
     ctx.setTransform(1,0,0,-1,canvas.width/2, canvas.height/2);
 });
-window.addEventListener('mousemove', (ev) => {
-    mouseState.cur = {x:ev.clientX, y:ev.clientY}
-});
+
 //set universe constants
 let dt = 25; // update interval (in milliseconds)
 let speed = 200; // speed of translation on key input (per second)
 let rot_speed = 2 * Math.PI; //speed of rotation on key input (radians / second)
-
+let rotation_sphere_radius = 2000;
 
 let wxRot = rotationMatrix('w-x', rot_speed / Math.PI * dt / 1000);
 let wyRot = rotationMatrix('w-y', rot_speed / Math.PI * dt / 1000);
